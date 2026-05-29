@@ -1,0 +1,36 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-job:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and Push to GitHub Container Registry
+        run: |
+          echo "Login..."
+          # Авторизація в реєстрі GitHub (ghcr.io)
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "Login complete"
+          
+          # Формування імені образу (переводимо в нижній регістр, як вимагає Docker)
+          IMAGE_NAME="ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')"
+          
+          echo "Building docker container..."
+          docker build -t $IMAGE_NAME:${{ github.sha }} .
+          echo "Building complete."
+          
+          echo "Pushing docker image to registry..."
+          docker push $IMAGE_NAME:${{ github.sha }}
+          echo "Pushing complete."
